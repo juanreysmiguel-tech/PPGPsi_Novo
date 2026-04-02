@@ -4,7 +4,7 @@ import {
   getRequestsByMeeting, getRequestsByCategory, getRequestsByStatus,
   getAllRequests, getRequestsByParecerista,
   createRequest, updateRequestStatus, updateRequestDetails, deleteRequest,
-  assignRequestToMeeting, assignParecerista,
+  assignRequestToMeeting, assignParecerista, undoLastAction,
 } from '@/services/firestore/requests'
 import type { RequestCategory } from '@/types'
 import { useAuthStore } from '@/stores/authStore'
@@ -107,8 +107,8 @@ export function useCreateRequest() {
 export function useUpdateRequestStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: string; status: string; actor: string; comment?: string }) => {
-      return updateRequestStatus(vars.id, vars.status, vars.comment)
+    mutationFn: (vars: { id: string; status: string; actor: string; comment?: string; observation?: string }) => {
+      return updateRequestStatus(vars.id, vars.status, vars.comment, vars.observation, vars.actor)
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['requests'] }) },
   })
@@ -145,6 +145,15 @@ export function useAssignParecerista() {
   return useMutation({
     mutationFn: (vars: { requestId: string; pareceristId: string }) =>
       assignParecerista(vars.requestId, vars.pareceristId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['requests'] }) },
+  })
+}
+
+export function useUndoLastAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { id: string; actor: string }) =>
+      undoLastAction(vars.id, vars.actor),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['requests'] }) },
   })
 }

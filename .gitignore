@@ -27,3 +27,5 @@ functions/lib/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

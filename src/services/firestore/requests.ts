@@ -114,29 +114,73 @@ export async function getRequestById(id: string): Promise<Request | null> {
 }
 
 /**
- * Update request status
+ * Update request status with full audit trail
  * Migrado de: API.updateRequestStatus(id, status, justif, obs, cb)
+ * Appends to historicoAprovacao array for complete workflow tracking
  */
 export async function updateRequestStatus(
   id: string,
   status: string,
   justification?: string,
-  observation?: string,
+  _observation?: string,
+  actor?: string,
 ): Promise<void> {
   const docRef = doc(db, COLLECTION, id)
-  const updateData: Record<string, any> = {
+
+  // Get current doc to append to history
+  const docSnap = await getDoc(docRef)
+  const currentData = docSnap.exists() ? docSnap.data() : {}
+  const previousHistory: any[] = currentData.historicoAprovacao ?? []
+
+  const historyEntry = {
+    date: new Date().toISOString(),
+    action: status,
+    user: actor || 'sistema',
+    justification: justification || '',
+  }
+
+  await updateDoc(docRef, {
     status,
+    historicoAprovacao: [...previousHistory, historyEntry],
     updatedAt: serverTimestamp(),
+  })
+}
+
+/**
+ * Undo last status action (revert to previous status)
+ * Migrado de: code.gs undoLastAction
+ */
+export async function undoLastAction(id: string, actor: string): Promise<string> {
+  const docRef = doc(db, COLLECTION, id)
+  const docSnap = await getDoc(docRef)
+  if (!docSnap.exists()) throw new Error('Solicitacao nao encontrada')
+
+  const data = docSnap.data()
+  const history: any[] = data.historicoAprovacao ?? []
+
+  if (history.length < 2) {
+    throw new Error('Nao ha acao anterior para desfazer')
   }
 
-  if (justification) {
-    updateData.justification = justification
-  }
-  if (observation) {
-    updateData.observation = observation
-  }
+  // Remove last entry, revert to previous status
+  const newHistory = history.slice(0, -1)
+  const previousStatus = newHistory[newHistory.length - 1]?.action || 'Aguardando Avaliacao do Orientador'
 
-  await updateDoc(docRef, updateData)
+  // Add undo entry
+  newHistory.push({
+    date: new Date().toISOString(),
+    action: previousStatus,
+    user: actor,
+    justification: `Revertido de "${data.status}" para "${previousStatus}"`,
+  })
+
+  await updateDoc(docRef, {
+    status: previousStatus,
+    historicoAprovacao: newHistory,
+    updatedAt: serverTimestamp(),
+  })
+
+  return previousStatus
 }
 
 /**

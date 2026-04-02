@@ -1,12 +1,17 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import { useCreateRequest } from '@/hooks/useRequests'
+import { uploadFile } from '@/services/storage'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { InputField, TextareaField, SelectField } from '@/components/ui/FormField'
-import { FileUpload } from '@/components/ui/FileUpload'
+import { FileUpload, UploadProgressBar } from '@/components/ui/FileUpload'
 import { cn } from '@/lib/cn'
 import { toast } from 'sonner'
+import { FINANCIAL_STATUS } from '@/config/constants'
 import { GraduationCap, ChevronRight, ChevronLeft, CheckCircle } from 'lucide-react'
+import type { FileReference } from '@/types'
 
 const STEPS = [
   { label: 'Dados da Defesa', key: 'dados' },
@@ -15,14 +20,27 @@ const STEPS = [
   { label: 'Revisao', key: 'review' },
 ]
 
+interface UploadEntry {
+  file: File
+  label: string
+  percent: number
+}
+
 /**
  * Multi-step defense scheduling wizard.
  * Replicates the defesa scheduling flow from the original system.
+ * Submits to Firestore with tipoSolicitacao = "Defesa de Dissertacao/Tese"
+ * and uploads files to Firebase Storage.
  */
 export function DefesaPage() {
+  const navigate = useNavigate()
   const { userProfile } = useAuthStore()
-  const [step, setStep] = useState(0)
+  const createRequest = useCreateRequest()
 
+  const [step, setStep] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Step 0 - Defense data
   const [titulo, setTitulo] = useState('')
   const [dataDefesa, setDataDefesa] = useState('')
   const [horaDefesa, setHoraDefesa] = useState('')
@@ -30,18 +48,133 @@ export function DefesaPage() {
   const [nivel, setNivel] = useState(userProfile?.nivel ?? 'Mestrado')
   const [resumo, setResumo] = useState('')
 
+  // Step 1 - Committee
   const [presidente, setPresidente] = useState('')
   const [membros, setMembros] = useState('')
   const [suplentes, setSuplentes] = useState('')
 
+  // Step 2 - Files
+  const [dissertacaoFile, setDissertacaoFile] = useState<File | null>(null)
+  const [cartaOrientadorFile, setCartaOrientadorFile] = useState<File | null>(null)
+  const [outrosFiles, setOutrosFiles] = useState<File[]>([])
+
+  // Upload progress tracking
+  const [uploads, setUploads] = useState<UploadEntry[]>([])
+
   const canNext = (() => {
     if (step === 0) return titulo && dataDefesa && local
     if (step === 1) return presidente
+    if (step === 2) return !!dissertacaoFile
     return true
   })()
 
-  const handleSubmit = () => {
-    toast.success('Solicitacao de defesa enviada! A secretaria revisara os dados.')
+  const updateUploadProgress = (index: number, percent: number) => {
+    setUploads((prev) => prev.map((u, i) => (i === index ? { ...u, percent } : u)))
+  }
+
+  const handleSubmit = async () => {
+    if (!userProfile) {
+      toast.error('Voce precisa estar logado para enviar a solicitacao.')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      // 1. Collect all files to upload
+      const filesToUpload: { file: File; label: string }[] = []
+
+      if (dissertacaoFile) {
+        filesToUpload.push({ file: dissertacaoFile, label: 'Dissertacao/Tese' })
+      }
+      if (cartaOrientadorFile) {
+        filesToUpload.push({ file: cartaOrientadorFile, label: 'Carta do Orientador' })
+      }
+      for (const f of outrosFiles) {
+        filesToUpload.push({ file: f, label: `Documento: ${f.name}` })
+      }
+
+      // Initialize upload progress entries
+      setUploads(filesToUpload.map(({ file, label }) => ({ file, label, percent: 0 })))
+
+      // 2. Upload files to Firebase Storage
+      const uploadedFiles: FileReference[] = []
+      const tempId = `defesa_${userProfile.id}_${Date.now()}`
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const { file, label } = filesToUpload[i]
+        const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+        const storagePath = `requests/${tempId}/${safeName}`
+
+        const url = await uploadFile(storagePath, file, (progress) => {
+          updateUploadProgress(i, progress.percent)
+        })
+
+        uploadedFiles.push({
+          name: label,
+          path: storagePath,
+          url,
+          uploadedAt: new Date().toISOString(),
+        })
+      }
+
+      // 3. Build the detalhes object with all form data
+      const detalhes: Record<string, unknown> = {
+        titulo,
+        dataDefesa,
+        horaDefesa,
+        local,
+        nivel,
+        resumo,
+        presidente,
+        membros: membros
+          .split('\n')
+          .map((m) => m.trim())
+          .filter(Boolean),
+        suplentes: suplentes
+          .split('\n')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      }
+
+      // 4. Create the request in Firestore
+      await createRequest.mutateAsync({
+        idUsuario: userProfile.id,
+        tipoSolicitacao: 'Defesa de Dissertacao/Tese',
+        categoria: 'academic',
+        detalhes,
+        nomeAluno: userProfile.nome,
+        emailOrientador: userProfile.emailOrientador ?? '',
+        status: FINANCIAL_STATUS.PENDING_ADVISOR,
+        arquivos: uploadedFiles,
+      })
+
+      toast.success('Solicitacao de defesa enviada com sucesso! A secretaria revisara os dados.')
+
+      // Reset form
+      setStep(0)
+      setTitulo('')
+      setDataDefesa('')
+      setHoraDefesa('')
+      setLocal('')
+      setNivel(userProfile?.nivel ?? 'Mestrado')
+      setResumo('')
+      setPresidente('')
+      setMembros('')
+      setSuplentes('')
+      setDissertacaoFile(null)
+      setCartaOrientadorFile(null)
+      setOutrosFiles([])
+      setUploads([])
+
+      // Navigate back to dashboard
+      navigate('/dashboard')
+    } catch (err) {
+      console.error('Erro ao enviar solicitacao de defesa:', err)
+      toast.error('Erro ao enviar solicitacao. Tente novamente.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -106,9 +239,22 @@ export function DefesaPage() {
 
           {step === 2 && (
             <>
-              <FileUpload label="Versao final da tese/dissertacao (PDF)" accept=".pdf" onChange={() => {}} required />
-              <FileUpload label="Carta do orientador" accept=".pdf" onChange={() => {}} />
-              <FileUpload label="Outros documentos (opcional)" onChange={() => {}} />
+              <FileUpload
+                label="Versao final da tese/dissertacao (PDF)"
+                accept=".pdf"
+                onChange={(files) => setDissertacaoFile(files[0] ?? null)}
+                required
+              />
+              <FileUpload
+                label="Carta do orientador"
+                accept=".pdf"
+                onChange={(files) => setCartaOrientadorFile(files[0] ?? null)}
+              />
+              <FileUpload
+                label="Outros documentos (opcional)"
+                multiple
+                onChange={(files) => setOutrosFiles(files)}
+              />
             </>
           )}
 
@@ -121,12 +267,32 @@ export function DefesaPage() {
               <ReviewRow label="Nivel" value={nivel} />
               <ReviewRow label="Presidente" value={presidente} />
               <ReviewRow label="Membros" value={membros || '-'} />
+              <ReviewRow label="Suplentes" value={suplentes || '-'} />
+              <ReviewRow label="Resumo" value={resumo || '-'} />
+              <ReviewRow
+                label="Arquivos"
+                value={[
+                  dissertacaoFile?.name,
+                  cartaOrientadorFile?.name,
+                  ...outrosFiles.map((f) => f.name),
+                ].filter(Boolean).join(', ') || 'Nenhum'}
+              />
+
+              {/* Upload progress indicators (shown during submission) */}
+              {uploads.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-semibold text-gray-800">Upload de arquivos</h4>
+                  {uploads.map((u, i) => (
+                    <UploadProgressBar key={i} fileName={u.label} percent={u.percent} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Navigation */}
           <div className="flex justify-between pt-4 border-t border-gray-200">
-            <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
+            <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 0 || submitting}>
               <ChevronLeft className="h-4 w-4" /> Anterior
             </Button>
             {step < STEPS.length - 1 ? (
@@ -134,8 +300,8 @@ export function DefesaPage() {
                 Proximo <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button variant="success" onClick={handleSubmit}>
-                Enviar Solicitacao
+              <Button variant="success" onClick={handleSubmit} loading={submitting} disabled={submitting}>
+                {submitting ? 'Enviando...' : 'Enviar Solicitacao'}
               </Button>
             )}
           </div>
@@ -149,7 +315,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-3">
       <span className="text-gray-500 min-w-[100px]">{label}:</span>
-      <span className="text-gray-800 font-medium">{value || '-'}</span>
+      <span className="text-gray-800 font-medium whitespace-pre-line">{value || '-'}</span>
     </div>
   )
 }

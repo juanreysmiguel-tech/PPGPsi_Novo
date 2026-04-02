@@ -28,6 +28,8 @@ interface DataTableProps<T> {
   emptyMessage?: string
   className?: string
   pageSize?: number
+  exportable?: boolean
+  exportFilename?: string
 }
 
 export function DataTable<T>({
@@ -35,6 +37,7 @@ export function DataTable<T>({
   searchPlaceholder = 'Buscar...', searchFn,
   emptyMessage = 'Nenhum registro encontrado.',
   className, pageSize = 15,
+  exportable = false, exportFilename = 'export',
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
@@ -66,6 +69,24 @@ export function DataTable<T>({
   const totalPages = Math.ceil(sorted.length / pageSize)
   const paged = sorted.slice(page * pageSize, (page + 1) * pageSize)
 
+  const handleExportCSV = () => {
+    const headers = columns.map((c) => c.header)
+    const rows = sorted.map((row) =>
+      columns.map((col) => {
+        const val = col.accessor ? col.accessor(row) : ''
+        return String(val).replace(/"/g, '""')
+      }),
+    )
+    const csv = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${exportFilename}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleSort = (key: string) => {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -77,16 +98,26 @@ export function DataTable<T>({
 
   return (
     <div className={cn('overflow-hidden rounded-xl border border-gray-200 bg-white', className)}>
-      {/* Search bar */}
-      {searchFn && (
-        <div className="border-b border-gray-100 px-4 py-3">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-            placeholder={searchPlaceholder}
-            className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          />
+      {/* Search bar + Export */}
+      {(searchFn || exportable) && (
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+          {searchFn ? (
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+              placeholder={searchPlaceholder}
+              className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            />
+          ) : <div />}
+          {exportable && (
+            <button
+              onClick={handleExportCSV}
+              className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Exportar CSV
+            </button>
+          )}
         </div>
       )}
 

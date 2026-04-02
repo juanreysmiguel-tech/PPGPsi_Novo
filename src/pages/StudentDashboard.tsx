@@ -11,6 +11,9 @@ import { NewRequestModal } from '@/components/request/NewRequestModal'
 import { RequestDetailModal } from '@/components/request/RequestDetailModal'
 import { formatDate } from '@/lib/utils'
 import type { Request } from '@/types'
+import { EditContactModal } from '@/components/auth/EditContactModal'
+import { AccountabilityModal } from '@/components/financial/AccountabilityModal'
+import { FINANCIAL_STATUS } from '@/config/constants'
 import { FileText, GraduationCap, HelpCircle, User, Edit, Megaphone } from 'lucide-react'
 
 /**
@@ -25,6 +28,8 @@ export function StudentDashboard() {
   const [newModalOpen, setNewModalOpen] = useState(false)
   const [newModalCategory, setNewModalCategory] = useState<'academic' | 'financial' | undefined>()
   const [detailRequest, setDetailRequest] = useState<Request | null>(null)
+  const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [accountabilityRequest, setAccountabilityRequest] = useState<Request | null>(null)
 
   if (!user) return null
   const firstName = user.nome?.split(' ')[0] || 'Aluno'
@@ -74,7 +79,7 @@ export function StudentDashboard() {
               <h3 className="font-semibold text-gray-800">{user.nome || 'Usuario'}</h3>
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => setContactModalOpen(true)}>
               <Edit className="h-3.5 w-3.5" /> Editar Contatos
             </Button>
           </div>
@@ -137,6 +142,29 @@ export function StudentDashboard() {
         open={!!detailRequest}
         onClose={() => setDetailRequest(null)}
         request={detailRequest}
+        actions={
+          detailRequest?.status === FINANCIAL_STATUS.ACCOUNTABILITY_REQUESTED
+            ? [{
+                label: 'Enviar Prestacao de Contas',
+                variant: 'primary' as const,
+                onClick: () => {
+                  setAccountabilityRequest(detailRequest)
+                  setDetailRequest(null)
+                },
+              }]
+            : undefined
+        }
+      />
+
+      <EditContactModal
+        open={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+      />
+
+      <AccountabilityModal
+        open={!!accountabilityRequest}
+        onClose={() => setAccountabilityRequest(null)}
+        request={accountabilityRequest}
       />
     </div>
   )
