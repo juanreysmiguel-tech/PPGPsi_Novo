@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUFSCarEmail() {
+      return request.auth.token.email.matches('.*@ufscar\\.br$') ||
+             request.auth.token.email.matches('.*@estudante\\.ufscar\\.br$');
+    }
+
+    function getUserRoles() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
+    }
+
+    function hasAnyRole(roles) {
+      return getUserRoles().hasAny(roles);
+    }
+
+    function isAdmin() {
+      return hasAnyRole(['Secretaria', 'Coordenacao']);
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /** Conta institucional pode criar o proprio users/{uid} se a Cloud Function onCreate nao rodou. */
+    function isPpgpsiSecretariaSelfCreate(userId) {
+      return isOwner(userId)
+        && request.auth.token.email == 'ppgpsi@ufscar.br';
+    }
+
+    // USERS collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isAdmin() || isPpgpsiSecretariaSelfCreate(userId));
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // REQUESTS collection
+    match /requests/{requestId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.idUsuario) ||
+        hasAnyRole(['Docente', 'Secretaria', 'Coordenacao', 'CG'])
+      );
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.idUsuario) ||
+        hasAnyRole(['Docente', 'Secretaria', 'Coordenacao', 'CG'])
+      );
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // MEETINGS collection
+    match /meetings/{meetingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // FINANCIAL collection
+    match /financial/{recordId} {
+      allow read: if isAuthenticated() && hasAnyRole(['Secretaria', 'Coordenacao', 'CG']);
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // NOTIFICATIONS collection
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.idUsuario == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.idUsuario == request.auth.uid;
+      allow create: if false; // Only Cloud Functions
+    }
+
+    // MURAL collection
+    match /mural/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.idUsuario) || isAdmin()
+      );
+    }
+
+    // HELP ARTICLES collection
+    match /helpArticles/{articleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // ATA (Meeting Minutes) collection
+    match /ata/{entryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin();
+    }
+
+    // ARCHIVED REQUESTS collection
+    match /archivedRequests/{requestId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // QUALIS collection (read-only reference data)
+    match /qualis/{entryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+  }
+}
