@@ -107,5 +107,69 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isAdmin();
     }
+
+    // PROFILES collection (scientific profiles)
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // PUBLICATIONS collection (bibliographic production)
+    match /publications/{pubId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update, delete: if isAuthenticated() && (
+        hasAnyRole(['Secretaria', 'Coordenacao']) ||
+        resource.data.authorIds.hasAny([request.auth.uid])
+      );
+    }
+
+    // PTTs collection (Produtos Técnicos/Tecnológicos)
+    match /ptts/{pttId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.authorId) ||
+        hasAnyRole(['Secretaria', 'Coordenacao'])
+      );
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // LABORATORIES collection (research labs)
+    match /laboratories/{labId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.leaderId) ||
+        hasAnyRole(['Secretaria', 'Coordenacao'])
+      );
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // PROJECTS collection (research projects)
+    match /projects/{projId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.leaderId) ||
+        hasAnyRole(['Secretaria', 'Coordenacao'])
+      );
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // SUCUPIRA_IMPORTS collection (staging for imports)
+    match /sucupira_imports/{importId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // NEWS_FEED collection (Hall de Novidades)
+    match /news_feed/{newsId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isUFSCarEmail();
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.authorId) || isAdmin()
+      );
+    }
   }
 }
