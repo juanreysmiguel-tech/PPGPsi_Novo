@@ -23,6 +23,7 @@ import { DefesaPage } from '@/pages/DefesaPage'
 import { PPGPsiuPage } from '@/pages/PPGPsiuPage'
 import { MuralPage } from '@/pages/MuralPage'
 import { HelpPage } from '@/pages/HelpPage'
+import { HelpAdminPage } from '@/pages/HelpAdminPage'
 import { NotificationsPage } from '@/pages/NotificationsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { PTTsPage } from '@/pages/PTTsPage'
@@ -113,6 +114,11 @@ function AppContent() {
           } />
           <Route path="/mural" element={<MuralPage />} />
           <Route path="/ajuda" element={<HelpPage />} />
+          <Route path="/admin/ajuda" element={
+            <ProtectedRoute allowedRoles={['Secretaria', 'Coordenacao']}>
+              <HelpAdminPage />
+            </ProtectedRoute>
+          } />
           <Route path="/notificacoes" element={<NotificationsPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/ptts" element={

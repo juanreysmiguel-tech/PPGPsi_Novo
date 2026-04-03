@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { useMyRequests } from '@/hooks/useRequests'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -14,6 +15,7 @@ import type { Request } from '@/types'
 import { EditContactModal } from '@/components/auth/EditContactModal'
 import { AccountabilityModal } from '@/components/financial/AccountabilityModal'
 import { FINANCIAL_STATUS } from '@/config/constants'
+import { getMuralPosts } from '@/services/firestore/mural'
 import { FileText, GraduationCap, HelpCircle, User, Edit, Megaphone } from 'lucide-react'
 
 /**
@@ -30,6 +32,13 @@ export function StudentDashboard() {
   const [detailRequest, setDetailRequest] = useState<Request | null>(null)
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [accountabilityRequest, setAccountabilityRequest] = useState<Request | null>(null)
+
+  // Mural preview - fetch latest 2 posts
+  const { data: muralPosts } = useQuery({
+    queryKey: ['mural', 'preview', 2],
+    queryFn: () => getMuralPosts(2),
+    staleTime: 5 * 60 * 1000,
+  })
 
   if (!user) return null
   const firstName = user.nome?.split(' ')[0] || 'Aluno'
@@ -110,7 +119,7 @@ export function StudentDashboard() {
         />
       )}
 
-      {/* Mural Preview */}
+      {/* Mural Preview - shows 2 latest posts inline (matches GAS) */}
       <Card className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
         <CardBody className="p-4">
           <div className="flex items-start justify-between mb-3">
@@ -122,6 +131,29 @@ export function StudentDashboard() {
               <p className="text-xs text-gray-500">Publicize sua pesquisa, artigos e produtos tecnicos.</p>
             </div>
           </div>
+          {muralPosts && muralPosts.length > 0 ? (
+            <div className="space-y-0 divide-y divide-gray-200 mb-3">
+              {muralPosts.map((post) => (
+                <div key={post.id} className="py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-800">{post.nomeUsuario}</span>
+                    <span className="text-xs text-gray-400">
+                      {post.dataPublicacao?.toDate?.()
+                        ? post.dataPublicacao.toDate().toLocaleDateString('pt-BR')
+                        : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                    {post.conteudo?.substring(0, 100)}...
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-3">
+              Nenhuma publicacao ainda.
+            </p>
+          )}
           <button
             onClick={() => navigate('/mural')}
             className="text-sm text-primary font-medium hover:underline"

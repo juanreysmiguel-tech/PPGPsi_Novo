@@ -90,6 +90,12 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isAdmin();
     }
 
+    // DISCIPLINAS collection
+    match /disciplinas/{discId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
     // ATA (Meeting Minutes) collection
     match /ata/{entryId} {
       allow read: if isAuthenticated();

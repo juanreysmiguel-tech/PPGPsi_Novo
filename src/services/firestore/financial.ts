@@ -18,6 +18,7 @@ function toRecord(id: string, data: DocumentData): FinancialRecord {
     dataAutorizacao: data.dataAutorizacao,
     comprovanteUrl: data.comprovanteUrl,
     dadosBancarios: data.dadosBancarios,
+    status: data.status || 'PENDING_ADVISOR',
     createdAt: data.createdAt ?? Timestamp.now(),
   }
 }

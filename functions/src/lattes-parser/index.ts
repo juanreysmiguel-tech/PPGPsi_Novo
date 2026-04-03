@@ -3,12 +3,11 @@
  * Triggered by: HTTP (upload from React component)
  */
 
-import * as functions from 'firebase-functions'
+import * as functions from 'firebase-functions/v1'
 import * as admin from 'firebase-admin'
 import xml2js from 'xml2js'
 
 const db = admin.firestore()
-const bucket = admin.storage().bucket()
 
 interface LattesPublication {
   title: string
@@ -17,20 +16,6 @@ interface LattesPublication {
   type: 'artigo' | 'livro' | 'capitulo' | 'evento'
   doi?: string
   issn?: string
-}
-
-interface LattesSupervision {
-  name: string
-  level: 'mestrado' | 'doutorado'
-  status: 'concluida' | 'andamento'
-  year?: number
-}
-
-interface LattesProject {
-  title: string
-  startYear: number
-  endYear?: number
-  status: 'ativo' | 'concluido'
 }
 
 /**
@@ -156,7 +141,7 @@ async function parseLattes(xmlContent: string): Promise<{
  */
 export const lattesParser = functions
   .region('southamerica-east1')
-  .https.onCall(async (data, context) => {
+  .https.onCall(async (data: any, context: any) => {
     // Check authentication
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User not authenticated')

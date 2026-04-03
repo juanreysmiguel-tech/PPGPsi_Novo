@@ -3,7 +3,7 @@
  * Triggered by: HTTP (upload from React component for Coordenação)
  */
 
-import * as functions from 'firebase-functions'
+import * as functions from 'firebase-functions/v1'
 import * as admin from 'firebase-admin'
 
 const db = admin.firestore()
@@ -53,7 +53,7 @@ function parseCSV(csvContent: string): SucupiraRecord[] {
  */
 export const sucupiraParser = functions
   .region('southamerica-east1')
-  .https.onCall(async (data, context) => {
+  .https.onCall(async (data: any, context: any) => {
     // Check authentication - admin only
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'User not authenticated')
@@ -110,7 +110,7 @@ export const reconcileSucupira = functions
   .region('southamerica-east1')
   .pubsub.schedule('0 2 * * *')
   .timeZone('UTC')
-  .onRun(async context => {
+  .onRun(async (context: any) => {
     try {
       // Fetch all pending imports
       const imports = await db
@@ -139,7 +139,7 @@ export const reconcileSucupira = functions
           }
 
           const userId = usersSnapshot.docs[0].id
-          log.push(`✓ Sincronizou: ${record.docente}`)
+          log.push(`✓ Sincronizou: ${record.docente} (${userId})`)
         }
 
         // Mark import as reconciled

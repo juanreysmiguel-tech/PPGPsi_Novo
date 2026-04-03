@@ -1,0 +1,14 @@
+﻿src/pages/PendingDepositsPage.tsx(5,1): error TS6133: 'EmptyState' is declared but its value is never read.
+src/pages/PendingDepositsPage.tsx(8,1): error TS6133: 'FINANCIAL_STATUS' is declared but its value is never read.
+src/pages/PendingDepositsPage.tsx(18,30): error TS6133: 'isLoading' is declared but its value is never read.
+src/pages/ProexDashboardPage.tsx(5,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/ProfessorDashboard.tsx(56,15): error TS2339: Property 'emailAluno' does not exist on type 'Request'.
+src/pages/ProfessorDashboard.tsx(56,40): error TS2339: Property 'emailAluno' does not exist on type 'Request'.
+src/pages/ProfessorDashboard.tsx(208,74): error TS2352: Conversion of type 'Timestamp' to type 'string' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/pages/SecretariaDashboard.tsx(16,32): error TS6133: 'DollarSign' is declared but its value is never read.
+src/pages/SecretariaDashboard.tsx(16,44): error TS6133: 'Archive' is declared but its value is never read.
+src/pages/SecretariaDashboard.tsx(17,38): error TS6133: 'CheckCircle' is declared but its value is never read.
+src/pages/SecretariaDashboard.tsx(27,9): error TS6133: 'currentRole' is declared but its value is never read.
+src/pages/SecretariaDashboard.tsx(31,9): error TS6133: 'users' is declared but its value is never read.
+src/pages/SecretariaDashboard.tsx(346,10): error TS6133: 'StatCard' is declared but its value is never read.
+src/services/firestore/financial.ts(12,3): error TS2741: Property 'status' is missing in type '{ id: string; idSolicitacao: any; valor: any; rubrica: any; descricao: any; dataAutorizacao: any; comprovanteUrl: any; dadosBancarios: any; createdAt: any; }' but required in type 'FinancialRecord'.

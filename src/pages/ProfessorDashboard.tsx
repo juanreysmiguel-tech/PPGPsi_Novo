@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { useAdvisorRequests, useMyRequests } from '@/hooks/useRequests'
 import { useStudentsByAdvisor } from '@/hooks/useUser'
@@ -13,8 +14,9 @@ import { RequestDetailModal } from '@/components/request/RequestDetailModal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/cn'
 import { isFinancialType } from '@/lib/statusUtils'
+import { getMuralPosts } from '@/services/firestore/mural'
 import type { Request, User } from '@/types'
-import { Users, Megaphone, BookOpen, DollarSign, Clock, CheckCircle, XCircle, Pause } from 'lucide-react'
+import { Users, Megaphone, BookOpen, DollarSign, Clock, CheckCircle, XCircle, Pause, AlertTriangle } from 'lucide-react'
 
 type Category = 'academico' | 'financeiro'
 type StatusFilter = 'pendentes' | 'aceitos' | 'pautados' | 'recusados'
@@ -35,6 +37,27 @@ export function ProfessorDashboard() {
   const [category, setCategory] = useState<Category>('academico')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pendentes')
   const [detailRequest, setDetailRequest] = useState<Request | null>(null)
+  const [selectedOrientandoId, setSelectedOrientandoId] = useState<string | null>(null)
+
+  // Mural preview
+  const { data: muralPosts } = useQuery({
+    queryKey: ['mural', 'preview', 2],
+    queryFn: () => getMuralPosts(2),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Build set of orientandos with pending requests
+  const orientandosWithPending = useMemo(() => {
+    const reqs = studentRequests ?? []
+    const userIds = new Set<string>()
+    reqs.forEach((r) => {
+      const s = r.status.toLowerCase()
+      if (s.includes('orientador') || s.includes('aguardando')) {
+        if (r.idUsuario) userIds.add(r.idUsuario)
+      }
+    })
+    return userIds
+  }, [studentRequests])
 
   // Split student requests by category
   const categorized = useMemo(() => {
@@ -102,7 +125,7 @@ export function ProfessorDashboard() {
         </CardBody>
       </Card>
 
-      {/* Mural preview */}
+      {/* Mural preview with inline posts (matches GAS) */}
       <Card className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
         <CardBody className="p-4">
           <h5 className="font-semibold text-gray-800 flex items-center gap-2 mb-1">
@@ -110,8 +133,29 @@ export function ProfessorDashboard() {
             Mural da Comunidade PPGPsi
           </h5>
           <p className="text-xs text-gray-500 mb-2">
-            Publicize sua pesquisa, publicacao de artigos, livros, capitulos de livros, coleta de dados, Produtos Tecnicos e Tecnologicos.
+            Publicize sua pesquisa, publicacao de artigos, livros, capitulos de livros, coleta de dados, Produtos Tecnicos e Tecnologicos e outras informacoes relevantes. Toda a Comunidade PPGPsi tera acesso a sua publicacao.
           </p>
+          {muralPosts && muralPosts.length > 0 ? (
+            <div className="space-y-0 divide-y divide-gray-200 mb-3">
+              {muralPosts.map((post) => (
+                <div key={post.id} className="py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-800">{post.nomeUsuario}</span>
+                    <span className="text-xs text-gray-400">
+                      {post.dataPublicacao?.toDate?.()
+                        ? post.dataPublicacao.toDate().toLocaleDateString('pt-BR')
+                        : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                    {post.conteudo?.substring(0, 100)}...
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-3">Nenhuma publicacao ainda.</p>
+          )}
           <button onClick={() => navigate('/mural')} className="text-sm text-primary font-medium hover:underline">
             Ver todas as publicacoes &rarr;
           </button>
@@ -139,17 +183,35 @@ export function ProfessorDashboard() {
                 <div className="p-4 text-center text-sm text-gray-500">Nenhum orientando ativo</div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {orientandos.map((student: User) => (
-                    <div key={student.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {student.nome?.charAt(0) || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{student.nome}</p>
-                        <p className="text-xs text-gray-500">{student.nivel || 'Discente'}</p>
-                      </div>
-                    </div>
-                  ))}
+                  {orientandos.map((student: User) => {
+                    const hasPending = orientandosWithPending.has(student.id)
+                    return (
+                      <button
+                        key={student.id}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors w-full text-left"
+                        onClick={() => setSelectedOrientandoId(
+                          selectedOrientandoId === student.id ? null : student.id
+                        )}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {student.nome?.charAt(0) || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {student.nome}
+                            {hasPending && (
+                              <AlertTriangle className="inline h-3.5 w-3.5 text-amber-500 ml-1.5" />
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {student.nivel || 'Discente'}
+                            {student.dataDefesa ? ` • Defesa: ${student.dataDefesa.toDate?.().toLocaleDateString('pt-BR')}` : ''}
+                          </p>
+                        </div>
+                        <span className="text-gray-400 text-xs">&rarr;</span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </CardBody>
