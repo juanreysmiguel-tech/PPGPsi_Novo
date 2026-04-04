@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { KanbanBoard } from '@/components/admin/KanbanBoard'
 import { SecretariaActionPanel } from '@/components/admin/SecretariaActionPanel'
 import { RequestDetailModal } from '@/components/request/RequestDetailModal'
+import { CSVImportModal } from '@/components/admin/CSVImportModal'
 import { formatDate } from '@/lib/utils'
 import type { Request, Meeting } from '@/types'
 import {
@@ -28,6 +29,7 @@ export function SecretariaDashboard() {
   const [detailRequest, setDetailRequest] = useState<Request | null>(null)
   const [actionRequest, setActionRequest] = useState<Request | null>(null)
   const [showKanban, setShowKanban] = useState(false)
+  const [csvOpen, setCsvOpen] = useState(false)
 
   // Stats - matching GAS: aguardandoOrientador, pautadosCPG, aprovadosHoje, totalPendentes
   const stats = useMemo(() => {
@@ -255,7 +257,7 @@ export function SecretariaDashboard() {
               <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate('/arquivo')}>
                 <FolderArchive className="h-4 w-4" /> Acessar Arquivo Morto
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+              <Button variant="outline" size="sm" className="w-full justify-start text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => setCsvOpen(true)}>
                 <FileDown className="h-4 w-4" /> Importar ProPGWeb (CSV)
               </Button>
             </CardBody>
@@ -334,6 +336,8 @@ export function SecretariaDashboard() {
         onClose={() => setActionRequest(null)}
         request={actionRequest}
       />
+
+      <CSVImportModal open={csvOpen} onClose={() => setCsvOpen(false)} />
     </div>
   )
 }
