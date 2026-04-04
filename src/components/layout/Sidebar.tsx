@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   Home, FileText, Calendar, DollarSign, ClipboardCheck,
   Users, Archive, GraduationCap, BookOpen, MessageSquare,
-  HelpCircle, Bell, LogOut, ChevronLeft, ChevronRight,
+  HelpCircle, Bell, LogOut, ChevronLeft, ChevronRight, Send
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useRole } from '@/hooks/useRole'
@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/authStore'
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Home, FileText, Calendar, DollarSign, ClipboardCheck,
   Users, Archive, GraduationCap, BookOpen, MessageSquare,
-  HelpCircle, Bell,
+  HelpCircle, Bell, Send
 }
 
 export function Sidebar() {

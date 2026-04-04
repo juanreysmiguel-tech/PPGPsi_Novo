@@ -25,6 +25,7 @@ import { MuralPage } from '@/pages/MuralPage'
 import { HelpPage } from '@/pages/HelpPage'
 import { HelpAdminPage } from '@/pages/HelpAdminPage'
 import { NotificationsPage } from '@/pages/NotificationsPage'
+import { MessagesPage } from '@/pages/MessagesPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { PTTsPage } from '@/pages/PTTsPage'
 import { LaboratoriesPage } from '@/pages/LaboratoriesPage'
@@ -119,6 +120,7 @@ function AppContent() {
               <HelpAdminPage />
             </ProtectedRoute>
           } />
+          <Route path="/mensagens" element={<MessagesPage />} />
           <Route path="/notificacoes" element={<NotificationsPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/ptts" element={

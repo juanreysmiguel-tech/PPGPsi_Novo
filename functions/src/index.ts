@@ -21,3 +21,6 @@ export { sendNotificationEmail } from './notifications/sendEmail'
 // Scheduled functions
 export { dailyArchive } from './scheduled/dailyArchive'
 export { dailyReminders, meetingDeadlines } from './scheduled/dailyReminders'
+
+// Meeting triggers
+export { onMeetingCreate } from './meetings/onMeetingWrite'

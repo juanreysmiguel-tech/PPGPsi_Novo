@@ -21,6 +21,7 @@ export const ROUTES: RouteConfig[] = [
   { path: '/ptt', label: 'Crie seu PTT', icon: 'FileText', roles: ['Discente', 'Docente'] },
   { path: '/ppgpsiu', label: 'PPGPsiu', icon: 'BookOpen', roles: ['Discente', 'Docente'] },
   { path: '/mural', label: 'Mural', icon: 'MessageSquare', roles: ['Discente', 'Docente', 'Secretaria', 'Coordenacao', 'CG'] },
+  { path: '/mensagens', label: 'Workspace', icon: 'Send', roles: ['Discente', 'Docente', 'Secretaria', 'Coordenacao', 'CG'] },
   { path: '/ajuda', label: 'Ajuda', icon: 'HelpCircle', roles: ['Discente', 'Docente', 'Secretaria', 'Coordenacao', 'CG'] },
   { path: '/notificacoes', label: 'Notificacoes', icon: 'Bell', roles: ['Discente', 'Docente', 'Secretaria', 'Coordenacao', 'CG'] },
 ]
