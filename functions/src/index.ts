@@ -24,3 +24,6 @@ export { dailyReminders, meetingDeadlines } from './scheduled/dailyReminders'
 
 // Meeting triggers
 export { onMeetingCreate } from './meetings/onMeetingWrite'
+
+// Data Import functions
+export { importProPGWebCsv } from './import/propgweb'
